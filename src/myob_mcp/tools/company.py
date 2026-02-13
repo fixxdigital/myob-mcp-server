@@ -24,4 +24,9 @@ def register(mcp: FastMCP) -> None:
         )
         if isinstance(result, list):
             return result
-        return [result] if result else []
+        if isinstance(result, dict):
+            for key in ("Items", "CompanyFiles"):
+                if key in result:
+                    return result[key]
+            return [result]
+        return []

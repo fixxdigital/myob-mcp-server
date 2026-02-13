@@ -4,5 +4,13 @@
   "redirect_uri": "http://localhost:33333/callback",
   "default_company_file_id": "",
   "token_path": "config/oauth_tokens.json",
-  "scopes": ["la.global"]
+  "scopes": [
+    "sme-company-file",
+    "sme-general-ledger",
+    "sme-sales",
+    "sme-purchases",
+    "sme-banking",
+    "sme-contacts-customer",
+    "sme-contacts-supplier"
+  ]
 }

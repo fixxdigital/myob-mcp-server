@@ -17,7 +17,15 @@ class MyobConfig:
     redirect_uri: str = "http://localhost:33333/callback"
     default_company_file_id: str = ""
     token_path: str = "config/oauth_tokens.json"
-    scopes: list[str] = field(default_factory=lambda: ["la.global"])
+    scopes: list[str] = field(default_factory=lambda: [
+        "sme-company-file",
+        "sme-general-ledger",
+        "sme-sales",
+        "sme-purchases",
+        "sme-banking",
+        "sme-contacts-customer",
+        "sme-contacts-supplier",
+    ])
 
 
 def _get_project_root() -> Path:
@@ -76,7 +84,15 @@ def load_config() -> MyobConfig:
         redirect_uri=data.get("redirect_uri", "http://localhost:33333/callback"),
         default_company_file_id=data.get("default_company_file_id", ""),
         token_path=resolved_token_path,
-        scopes=data.get("scopes", ["la.global"]),
+        scopes=data.get("scopes", [
+            "sme-company-file",
+            "sme-general-ledger",
+            "sme-sales",
+            "sme-purchases",
+            "sme-banking",
+            "sme-contacts-customer",
+            "sme-contacts-supplier",
+        ]),
     )
 
     if not config.client_id or not config.client_secret:

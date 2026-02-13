@@ -45,12 +45,16 @@ class MyobApiClient:
     def _resolve_company_file_id(
         self, company_file_id: str | None, required: bool = True
     ) -> str | None:
-        cfid = company_file_id or self.config.default_company_file_id
+        cfid = (
+            company_file_id
+            or self.config.default_company_file_id
+            or (self.auth._tokens or {}).get("business_id", "")
+        )
         if required and not cfid:
             raise ValueError(
-                "No company file ID provided and no default configured. "
-                "Use list_company_files to find your company file ID, "
-                "then set it in config or pass it to the tool."
+                "No company file ID available. "
+                "Re-run oauth_authorize to capture the company file ID, "
+                "or set default_company_file_id in config."
             )
         return cfid
 
@@ -134,6 +138,8 @@ class MyobApiClient:
                 result = None
             else:
                 result = resp.json()
+
+            logger.debug("Response from %s: status=%d body_type=%s", url, resp.status_code, type(result).__name__)
 
             if cache_key and cache_ttl:
                 self.cache.set(cache_key, result, cache_ttl)

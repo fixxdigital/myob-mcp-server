@@ -25,10 +25,13 @@ def register(mcp: FastMCP) -> None:
         logger.info("Opening browser for OAuth authorization")
         webbrowser.open(url)
         await run_oauth_callback_server(app.auth)
-        return {
+        result: dict[str, Any] = {
             "status": "authorized",
             "message": "OAuth authorization completed successfully.",
         }
+        if app.auth._tokens and app.auth._tokens.get("business_id"):
+            result["company_file_id"] = app.auth._tokens["business_id"]
+        return result
 
     @mcp.tool(
         description="Manually refresh the OAuth access token. "
