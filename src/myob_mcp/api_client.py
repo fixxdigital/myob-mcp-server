@@ -20,7 +20,10 @@ class MyobApiError(Exception):
         self.status_code = status_code
         self.message = message
         self.response_body = response_body
-        super().__init__(f"MYOB API Error {status_code}: {message}")
+        detail = f"MYOB API Error {status_code}: {message}"
+        if response_body:
+            detail += f" | Response: {response_body[:500]}"
+        super().__init__(detail)
 
 
 class MyobApiClient:
@@ -127,6 +130,10 @@ class MyobApiClient:
                 continue
 
             if resp.status_code >= 400:
+                logger.error(
+                    "API error %d on %s %s: %s",
+                    resp.status_code, method, path, resp.text,
+                )
                 raise MyobApiError(
                     resp.status_code,
                     f"{method} {path} failed",
@@ -155,6 +162,7 @@ class MyobApiClient:
         company_file_id: str | None = None,
         params: dict[str, str] | None = None,
         max_items: int = 1000,
+        top: int | None = None,
         cache_key: str | None = None,
         cache_ttl: float | None = None,
     ) -> list[dict[str, Any]]:
@@ -164,9 +172,13 @@ class MyobApiClient:
             if cached is not None:
                 return cached
 
+        page_size = top if top is not None else 400
+        if top is not None:
+            max_items = top
+
         all_items: list[dict[str, Any]] = []
         page_params = dict(params or {})
-        page_params["$top"] = "400"
+        page_params["$top"] = str(page_size)
         skip = 0
 
         while True:
@@ -190,10 +202,10 @@ class MyobApiClient:
 
             all_items.extend(items)
 
-            if len(items) < 400 or len(all_items) >= max_items:
+            if len(items) < page_size or len(all_items) >= max_items:
                 break
 
-            skip += 400
+            skip += page_size
 
         if cache_key and cache_ttl:
             self.cache.set(cache_key, all_items, cache_ttl)

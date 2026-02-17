@@ -4,11 +4,23 @@ from typing import Any
 
 from mcp.server.fastmcp import Context, FastMCP
 
+from ._filters import (
+    escape_odata,
+    validate_date,
+    pick,
+    pick_list,
+    INVOICE_LIST_FIELDS,
+    INVOICE_DETAIL_FIELDS,
+    CREATE_RESULT_FIELDS,
+)
+
 
 def register(mcp: FastMCP) -> None:
 
     @mcp.tool(
-        description="Get sales invoices. Can filter by date range, status, and customer."
+        description="Get sales invoices. Can filter by date range, status, customer, "
+        "and search by invoice number. Use top to limit results and orderby to sort "
+        "(e.g. orderby='Date desc' for most recent first)."
     )
     async def list_invoices(
         ctx: Context,
@@ -16,24 +28,34 @@ def register(mcp: FastMCP) -> None:
         date_to: str | None = None,
         status: str | None = None,
         customer_id: str | None = None,
+        search: str | None = None,
+        top: int | None = None,
+        orderby: str | None = None,
     ) -> list[dict[str, Any]]:
         app = ctx.request_context.lifespan_context
         params: dict[str, str] = {}
         filters: list[str] = []
         if date_from:
+            validate_date(date_from, "date_from")
             filters.append(f"Date ge datetime'{date_from}'")
         if date_to:
+            validate_date(date_to, "date_to")
             filters.append(f"Date le datetime'{date_to}'")
         if status:
-            filters.append(f"Status eq '{status}'")
+            filters.append(f"Status eq '{escape_odata(status)}'")
         if customer_id:
             filters.append(f"Customer/UID eq guid'{customer_id}'")
+        if search:
+            filters.append(f"substringof('{escape_odata(search)}', Number) eq true")
         if filters:
             params["$filter"] = " and ".join(filters)
+        if orderby:
+            params["$orderby"] = orderby
 
-        return await app.client.request_paged(
-            "/Sale/Invoice", params=params
+        items = await app.client.request_paged(
+            "/Sale/Invoice", params=params, top=top
         )
+        return pick_list(items, INVOICE_LIST_FIELDS)
 
     @mcp.tool(
         description="Get detailed information about a specific sales invoice by its UID"
@@ -43,7 +65,8 @@ def register(mcp: FastMCP) -> None:
         invoice_id: str,
     ) -> dict[str, Any]:
         app = ctx.request_context.lifespan_context
-        return await app.client.request("GET", f"/Sale/Invoice/{invoice_id}")
+        result = await app.client.request("GET", f"/Sale/Invoice/{invoice_id}")
+        return pick(result, INVOICE_DETAIL_FIELDS)
 
     @mcp.tool(
         description="Create a new sales invoice for a customer"
@@ -82,6 +105,7 @@ def register(mcp: FastMCP) -> None:
         if notes:
             body["Comment"] = notes
 
-        return await app.client.request(
+        result = await app.client.request(
             "POST", "/Sale/Invoice/Item", json_body=body
         )
+        return pick(result, CREATE_RESULT_FIELDS) if isinstance(result, dict) else result

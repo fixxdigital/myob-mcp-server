@@ -5,19 +5,30 @@ from typing import Any
 from mcp.server.fastmcp import Context, FastMCP
 
 from ..cache import CACHE_TTL_CONTACTS
+from ._filters import (
+    escape_odata,
+    pick,
+    pick_list,
+    strip_metadata,
+    CONTACT_LIST_FIELDS,
+    CREATE_RESULT_FIELDS,
+)
 
 
 def register(mcp: FastMCP) -> None:
 
     @mcp.tool(
         description="Get all contacts (customers and suppliers). "
-        "Can filter by contact type, active status, and search by name."
+        "Can filter by contact type, active status, and search by name. "
+        "Use top to limit results and orderby to sort."
     )
     async def list_contacts(
         ctx: Context,
         contact_type: str | None = None,
         is_active: bool | None = None,
         search: str | None = None,
+        top: int | None = None,
+        orderby: str | None = None,
     ) -> list[dict[str, Any]]:
         app = ctx.request_context.lifespan_context
 
@@ -34,18 +45,22 @@ def register(mcp: FastMCP) -> None:
             filters.append(f"IsActive eq {'true' if is_active else 'false'}")
         if search:
             filters.append(
-                f"substringof('{search}', CompanyName) eq true"
+                f"substringof('{escape_odata(search)}', CompanyName) eq true"
             )
         if filters:
             params["$filter"] = " and ".join(filters)
+        if orderby:
+            params["$orderby"] = orderby
 
-        cache_key = f"contacts:{contact_type}:{is_active}:{search}"
-        return await app.client.request_paged(
+        cache_key = f"contacts:{contact_type}:{is_active}:{search}:{top}:{orderby}"
+        items = await app.client.request_paged(
             path,
             params=params,
+            top=top,
             cache_key=cache_key,
             cache_ttl=CACHE_TTL_CONTACTS,
         )
+        return pick_list(items, CONTACT_LIST_FIELDS)
 
     @mcp.tool(
         description="Get detailed information about a specific contact by its UID"
@@ -55,7 +70,8 @@ def register(mcp: FastMCP) -> None:
         contact_id: str,
     ) -> dict[str, Any]:
         app = ctx.request_context.lifespan_context
-        return await app.client.request("GET", f"/Contact/{contact_id}")
+        result = await app.client.request("GET", f"/Contact/{contact_id}")
+        return strip_metadata(result)
 
     @mcp.tool(
         description="Create a new contact (customer or supplier)"
@@ -108,4 +124,4 @@ def register(mcp: FastMCP) -> None:
             "POST", path, json_body=body
         )
         app.client.cache.invalidate("contacts:")
-        return result
+        return pick(result, CREATE_RESULT_FIELDS) if isinstance(result, dict) else result

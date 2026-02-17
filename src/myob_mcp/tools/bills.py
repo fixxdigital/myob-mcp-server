@@ -4,11 +4,23 @@ from typing import Any
 
 from mcp.server.fastmcp import Context, FastMCP
 
+from ._filters import (
+    escape_odata,
+    validate_date,
+    pick,
+    pick_list,
+    BILL_LIST_FIELDS,
+    BILL_DETAIL_FIELDS,
+    CREATE_RESULT_FIELDS,
+)
+
 
 def register(mcp: FastMCP) -> None:
 
     @mcp.tool(
-        description="Get purchase bills. Can filter by date range, status, and supplier."
+        description="Get purchase bills. Can filter by date range, status, supplier, "
+        "and search by bill number. Use top to limit results and orderby to sort "
+        "(e.g. orderby='Date desc' for most recent first)."
     )
     async def list_bills(
         ctx: Context,
@@ -16,24 +28,34 @@ def register(mcp: FastMCP) -> None:
         date_to: str | None = None,
         status: str | None = None,
         supplier_id: str | None = None,
+        search: str | None = None,
+        top: int | None = None,
+        orderby: str | None = None,
     ) -> list[dict[str, Any]]:
         app = ctx.request_context.lifespan_context
         params: dict[str, str] = {}
         filters: list[str] = []
         if date_from:
+            validate_date(date_from, "date_from")
             filters.append(f"Date ge datetime'{date_from}'")
         if date_to:
+            validate_date(date_to, "date_to")
             filters.append(f"Date le datetime'{date_to}'")
         if status:
-            filters.append(f"Status eq '{status}'")
+            filters.append(f"Status eq '{escape_odata(status)}'")
         if supplier_id:
             filters.append(f"Supplier/UID eq guid'{supplier_id}'")
+        if search:
+            filters.append(f"substringof('{escape_odata(search)}', Number) eq true")
         if filters:
             params["$filter"] = " and ".join(filters)
+        if orderby:
+            params["$orderby"] = orderby
 
-        return await app.client.request_paged(
-            "/Purchase/Bill", params=params
+        items = await app.client.request_paged(
+            "/Purchase/Bill", params=params, top=top
         )
+        return pick_list(items, BILL_LIST_FIELDS)
 
     @mcp.tool(
         description="Get detailed information about a specific purchase bill by its UID"
@@ -43,7 +65,8 @@ def register(mcp: FastMCP) -> None:
         bill_id: str,
     ) -> dict[str, Any]:
         app = ctx.request_context.lifespan_context
-        return await app.client.request("GET", f"/Purchase/Bill/{bill_id}")
+        result = await app.client.request("GET", f"/Purchase/Bill/{bill_id}")
+        return pick(result, BILL_DETAIL_FIELDS)
 
     @mcp.tool(
         description="Create a new purchase bill from a supplier"
@@ -82,6 +105,7 @@ def register(mcp: FastMCP) -> None:
         if notes:
             body["Comment"] = notes
 
-        return await app.client.request(
+        result = await app.client.request(
             "POST", "/Purchase/Bill/Item", json_body=body
         )
+        return pick(result, CREATE_RESULT_FIELDS) if isinstance(result, dict) else result
