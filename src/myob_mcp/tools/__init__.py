@@ -7,11 +7,12 @@ if TYPE_CHECKING:
 
 
 def register_all_tools(mcp: FastMCP) -> None:
-    from . import accounts, banking, bills, company, contacts, invoices, oauth, sales_orders
+    from . import accounts, banking, bills, company, contacts, invoices, oauth, sales_orders, tax_codes
 
     oauth.register(mcp)
     company.register(mcp)
     accounts.register(mcp)
+    tax_codes.register(mcp)
     contacts.register(mcp)
     invoices.register(mcp)
     bills.register(mcp)

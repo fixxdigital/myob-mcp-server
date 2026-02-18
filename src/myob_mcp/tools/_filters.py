@@ -94,6 +94,14 @@ ACCOUNT_LIST_FIELDS: dict[str, Any] = {
     "CurrentBalance": True,
 }
 
+TAX_CODE_LIST_FIELDS: dict[str, Any] = {
+    "UID": True,
+    "Code": True,
+    "Description": True,
+    "Type": True,
+    "Rate": True,
+}
+
 CONTACT_LIST_FIELDS: dict[str, Any] = {
     "UID": True,
     "CompanyName": True,
