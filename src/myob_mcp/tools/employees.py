@@ -33,10 +33,10 @@ def register(mcp: FastMCP) -> None:
         if is_active is not None:
             filters.append(f"IsActive eq {'true' if is_active else 'false'}")
         if search:
-            safe = escape_odata(search)
+            safe = escape_odata(search).lower()
             filters.append(
-                f"(substringof('{safe}', FirstName) eq true"
-                f" or substringof('{safe}', LastName) eq true)"
+                f"(substringof('{safe}', tolower(FirstName)) eq true"
+                f" or substringof('{safe}', tolower(LastName)) eq true)"
             )
         if filters:
             params["$filter"] = " and ".join(filters)
