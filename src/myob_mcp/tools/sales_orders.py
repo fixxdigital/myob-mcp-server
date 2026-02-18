@@ -7,6 +7,7 @@ from mcp.server.fastmcp import Context, FastMCP
 from ._filters import (
     escape_odata,
     validate_date,
+    fix_subtotal,
     pick,
     pick_list,
     SALES_ORDER_LIST_FIELDS,
@@ -55,7 +56,7 @@ def register(mcp: FastMCP) -> None:
         items = await app.client.request_paged(
             "/Sale/Order", params=params, top=top
         )
-        return pick_list(items, SALES_ORDER_LIST_FIELDS)
+        return pick_list([fix_subtotal(i) for i in items], SALES_ORDER_LIST_FIELDS)
 
     @mcp.tool(
         description="Get detailed information about a specific sales order by its UID"
@@ -66,7 +67,7 @@ def register(mcp: FastMCP) -> None:
     ) -> dict[str, Any]:
         app = ctx.request_context.lifespan_context
         result = await app.client.request("GET", f"/Sale/Order/{sales_order_id}")
-        return pick(result, SALES_ORDER_DETAIL_FIELDS)
+        return pick(fix_subtotal(result), SALES_ORDER_DETAIL_FIELDS)
 
     @mcp.tool(
         description="Create a new sales order for a customer"

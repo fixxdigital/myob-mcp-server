@@ -54,6 +54,20 @@ def pick_list(items: list[dict[str, Any]], fields: dict[str, Any]) -> list[dict[
     return [pick(item, fields) for item in items]
 
 
+def fix_subtotal(item: dict[str, Any]) -> dict[str, Any]:
+    """Correct Subtotal to always be the pre-tax (exclusive) amount.
+
+    When IsTaxInclusive is True, MYOB sets Subtotal equal to TotalAmount
+    (the tax-inclusive total). This corrects it to TotalAmount - TotalTax
+    so callers always receive the pre-tax subtotal regardless of tax mode.
+    """
+    if item.get("IsTaxInclusive"):
+        total = item.get("TotalAmount") or 0
+        tax = item.get("TotalTax") or 0
+        return {**item, "Subtotal": round(total - tax, 2)}
+    return item
+
+
 def strip_metadata(obj: dict[str, Any]) -> dict[str, Any]:
     """Remove URI and RowVersion from top-level keys."""
     return {k: v for k, v in obj.items() if k not in _STRIP_KEYS}

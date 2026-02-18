@@ -7,6 +7,7 @@ from mcp.server.fastmcp import Context, FastMCP
 from ._filters import (
     escape_odata,
     validate_date,
+    fix_subtotal,
     pick,
     pick_list,
     INVOICE_LIST_FIELDS,
@@ -55,7 +56,7 @@ def register(mcp: FastMCP) -> None:
         items = await app.client.request_paged(
             "/Sale/Invoice", params=params, top=top
         )
-        return pick_list(items, INVOICE_LIST_FIELDS)
+        return pick_list([fix_subtotal(i) for i in items], INVOICE_LIST_FIELDS)
 
     @mcp.tool(
         description="Get detailed information about a specific sales invoice by its UID"
@@ -66,7 +67,7 @@ def register(mcp: FastMCP) -> None:
     ) -> dict[str, Any]:
         app = ctx.request_context.lifespan_context
         result = await app.client.request("GET", f"/Sale/Invoice/{invoice_id}")
-        return pick(result, INVOICE_DETAIL_FIELDS)
+        return pick(fix_subtotal(result), INVOICE_DETAIL_FIELDS)
 
     @mcp.tool(
         description="Create a new sales invoice for a customer"
