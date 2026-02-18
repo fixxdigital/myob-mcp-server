@@ -172,6 +172,7 @@ def register(mcp: FastMCP) -> None:
         result = await app.client.request(
             "POST", f"/Sale/Order/{order_layout}", json_body=body
         )
+        app.client.cache.invalidate("sales_orders:")
         return pick(result, CREATE_RESULT_FIELDS) if isinstance(result, dict) else result
 
     @mcp.tool(
@@ -258,4 +259,5 @@ def register(mcp: FastMCP) -> None:
         result = await app.client.request(
             "PUT", f"/Sale/Order/{order_layout}/{sales_order_id}", json_body=body
         )
+        app.client.cache.invalidate("sales_orders:")
         return pick(result, CREATE_RESULT_FIELDS) if isinstance(result, dict) else result

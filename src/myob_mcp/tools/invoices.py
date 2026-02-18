@@ -109,4 +109,5 @@ def register(mcp: FastMCP) -> None:
         result = await app.client.request(
             "POST", "/Sale/Invoice/Item", json_body=body
         )
+        app.client.cache.invalidate("invoices:")
         return pick(result, CREATE_RESULT_FIELDS) if isinstance(result, dict) else result

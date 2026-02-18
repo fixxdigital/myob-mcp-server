@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import secrets
 import time
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,7 @@ class MyobAuth:
     def __init__(self, config: MyobConfig) -> None:
         self._config = config
         self._tokens: dict[str, Any] | None = self._load_tokens()
+        self._oauth_state: str | None = None
 
     @property
     def _token_file(self) -> Path:
@@ -52,6 +54,7 @@ class MyobAuth:
         logger.info("Saved OAuth tokens to %s", path)
 
     def get_authorization_url(self) -> str:
+        self._oauth_state = secrets.token_urlsafe(32)
         scopes = " ".join(self._config.scopes)
         params = {
             "client_id": self._config.client_id,
@@ -59,6 +62,7 @@ class MyobAuth:
             "response_type": "code",
             "scope": scopes,
             "prompt": "consent",
+            "state": self._oauth_state,
         }
         return f"{AUTH_URL}?{urlencode(params)}"
 
@@ -173,22 +177,42 @@ async def run_oauth_callback_server(auth: MyobAuth, port: int = 33333) -> None:
                 params = parse_qs(url.query)
 
                 if "code" in params:
-                    code = params["code"][0]
-                    business_id = params.get("businessId", [None])[0]
-                    try:
-                        await auth.exchange_code(code, business_id=business_id)
-                        body = (
-                            "<html><body><h1>Authorization Successful</h1>"
-                            "<p>You can close this tab and return to Claude.</p>"
-                            "</body></html>"
+                    # Validate CSRF state parameter
+                    callback_state = params.get("state", [None])[0]
+                    expected_state = auth._oauth_state
+                    auth._oauth_state = None  # Clear after use
+                    if not callback_state or callback_state != expected_state:
+                        logger.warning(
+                            "OAuth state mismatch: possible CSRF attempt"
                         )
-                        result["success"] = True
-                    except Exception as e:
                         body = (
-                            f"<html><body><h1>Authorization Failed</h1>"
-                            f"<p>{e}</p></body></html>"
+                            "<html><body><h1>Authorization Failed</h1>"
+                            "<p>Invalid state parameter. "
+                            "Please try authorizing again.</p></body></html>"
                         )
-                        result["error"] = str(e)
+                        result["error"] = "OAuth state mismatch"
+                    else:
+                        code = params["code"][0]
+                        business_id = params.get("businessId", [None])[0]
+                        try:
+                            await auth.exchange_code(
+                                code, business_id=business_id
+                            )
+                            body = (
+                                "<html><body>"
+                                "<h1>Authorization Successful</h1>"
+                                "<p>You can close this tab and "
+                                "return to Claude.</p>"
+                                "</body></html>"
+                            )
+                            result["success"] = True
+                        except Exception as e:
+                            body = (
+                                f"<html><body>"
+                                f"<h1>Authorization Failed</h1>"
+                                f"<p>{e}</p></body></html>"
+                            )
+                            result["error"] = str(e)
                 elif "error" in params:
                     error = params.get("error_description", params["error"])[0]
                     body = (

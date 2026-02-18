@@ -123,7 +123,15 @@ class MyobApiClient:
                 continue
 
             if resp.status_code == 429 and attempt < max_retries:
-                wait = 0.5 * (2**attempt)
+                retry_after = resp.headers.get("Retry-After")
+                if retry_after:
+                    try:
+                        wait = int(retry_after)
+                    except ValueError:
+                        wait = 0.5 * (2**attempt)
+                else:
+                    wait = 0.5 * (2**attempt)
+                wait = min(wait, 60)
                 logger.warning("Rate limited, waiting %.1fs", wait)
                 await asyncio.sleep(wait)
                 continue
