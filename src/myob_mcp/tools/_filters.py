@@ -218,6 +218,7 @@ _SALES_ORDER_LINE: dict[str, Any] = {
     "ShipQuantity": True,
     "UnitPrice": True,
     "Total": True,
+    "Amount": True,
     "TaxCode": _TAXCODE_REF,
     "Account": _ACCOUNT_REF,
 }

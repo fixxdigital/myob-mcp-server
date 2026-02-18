@@ -16,6 +16,50 @@ from ._filters import (
 )
 
 
+_VALID_LAYOUTS = {"Item", "Service"}
+
+
+def _build_lines(
+    line_items: list[dict[str, Any]], layout: str
+) -> list[dict[str, Any]]:
+    """Build MYOB API line objects from user-provided line item dicts.
+
+    Item layout lines require: description, ship_quantity, unit_price, total, account_id
+    Service layout lines require: description, amount, account_id
+    Both accept optional: tax_code_id
+    """
+    lines: list[dict[str, Any]] = []
+    for i, item in enumerate(line_items):
+        line: dict[str, Any] = {
+            "Type": "Transaction",
+            "Description": item.get("description", ""),
+            "Account": {"UID": item["account_id"]},
+        }
+
+        if layout == "Item":
+            for field in ("ship_quantity", "unit_price", "total"):
+                if field not in item:
+                    raise ValueError(
+                        f"Line item {i}: '{field}' is required for Item layout orders."
+                    )
+            line["ShipQuantity"] = item["ship_quantity"]
+            line["UnitPrice"] = item["unit_price"]
+            line["Total"] = item["total"]
+        else:  # Service
+            if "amount" not in item:
+                raise ValueError(
+                    f"Line item {i}: 'amount' is required for Service layout orders."
+                )
+            line["Amount"] = item["amount"]
+
+        if "tax_code_id" in item:
+            line["TaxCode"] = {"UID": item["tax_code_id"]}
+
+        lines.append(line)
+
+    return lines
+
+
 def register(mcp: FastMCP) -> None:
 
     @mcp.tool(
@@ -70,34 +114,33 @@ def register(mcp: FastMCP) -> None:
         return pick(fix_subtotal(result), SALES_ORDER_DETAIL_FIELDS)
 
     @mcp.tool(
-        description="Create a new sales order for a customer"
+        description="Create a new sales order for a customer. "
+        "Set order_layout to 'Item' (default) for quantity-based orders "
+        "(line items need: description, ship_quantity, unit_price, total, account_id, "
+        "optional tax_code_id), or 'Service' for amount-based orders "
+        "(line items need: description, amount, account_id, optional tax_code_id)."
     )
     async def create_sales_order(
         ctx: Context,
         customer_id: str,
         date: str,
         line_items: list[dict[str, Any]],
+        order_layout: str = "Item",
         number: str | None = None,
         comment: str | None = None,
         ship_to_address: str | None = None,
         is_tax_inclusive: bool | None = None,
         freight: float | None = None,
     ) -> dict[str, Any]:
+        order_layout = order_layout.capitalize()
+        if order_layout not in _VALID_LAYOUTS:
+            raise ValueError(
+                f"Invalid order_layout '{order_layout}'. Must be 'Item' or 'Service'."
+            )
+
         app = ctx.request_context.lifespan_context
 
-        lines = []
-        for item in line_items:
-            line: dict[str, Any] = {
-                "Type": "Transaction",
-                "Description": item["description"],
-                "ShipQuantity": item["ship_quantity"],
-                "UnitPrice": item["unit_price"],
-                "Total": item["total"],
-                "Account": {"UID": item["account_id"]},
-            }
-            if "tax_code_id" in item:
-                line["TaxCode"] = {"UID": item["tax_code_id"]}
-            lines.append(line)
+        lines = _build_lines(line_items, order_layout)
 
         body: dict[str, Any] = {
             "Customer": {"UID": customer_id},
@@ -116,16 +159,22 @@ def register(mcp: FastMCP) -> None:
             body["Freight"] = freight
 
         result = await app.client.request(
-            "POST", "/Sale/Order/Item", json_body=body
+            "POST", f"/Sale/Order/{order_layout}", json_body=body
         )
         return pick(result, CREATE_RESULT_FIELDS) if isinstance(result, dict) else result
 
     @mcp.tool(
-        description="Edit/update an existing sales order. Only orders with status 'Open' can be edited."
+        description="Edit/update an existing sales order. Only orders with status 'Open' "
+        "can be edited. Set order_layout to match the order's layout: 'Item' (default) "
+        "for quantity-based orders, or 'Service' for amount-based orders. "
+        "Item line items need: description, ship_quantity, unit_price, total, account_id. "
+        "Service line items need: description, amount, account_id. "
+        "Both accept optional tax_code_id."
     )
     async def edit_sales_order(
         ctx: Context,
         sales_order_id: str,
+        order_layout: str = "Item",
         date: str | None = None,
         customer_id: str | None = None,
         line_items: list[dict[str, Any]] | None = None,
@@ -135,6 +184,12 @@ def register(mcp: FastMCP) -> None:
         is_tax_inclusive: bool | None = None,
         freight: float | None = None,
     ) -> dict[str, Any]:
+        order_layout = order_layout.capitalize()
+        if order_layout not in _VALID_LAYOUTS:
+            raise ValueError(
+                f"Invalid order_layout '{order_layout}'. Must be 'Item' or 'Service'."
+            )
+
         app = ctx.request_context.lifespan_context
 
         # Fetch full current order (unfiltered — needs RowVersion for PUT)
@@ -146,6 +201,13 @@ def register(mcp: FastMCP) -> None:
             raise ValueError(
                 f"Cannot edit order with status '{current.get('Status')}'. "
                 "Only orders with status 'Open' can be edited."
+            )
+
+        actual_layout = current.get("Layout")
+        if actual_layout and actual_layout != order_layout:
+            raise ValueError(
+                f"Layout mismatch: order has layout '{actual_layout}' but "
+                f"order_layout='{order_layout}' was specified."
             )
 
         body = dict(current)
@@ -172,22 +234,9 @@ def register(mcp: FastMCP) -> None:
             body["Freight"] = freight
 
         if line_items is not None:
-            lines = []
-            for item in line_items:
-                line: dict[str, Any] = {
-                    "Type": "Transaction",
-                    "Description": item["description"],
-                    "ShipQuantity": item["ship_quantity"],
-                    "UnitPrice": item["unit_price"],
-                    "Total": item["total"],
-                    "Account": {"UID": item["account_id"]},
-                }
-                if "tax_code_id" in item:
-                    line["TaxCode"] = {"UID": item["tax_code_id"]}
-                lines.append(line)
-            body["Lines"] = lines
+            body["Lines"] = _build_lines(line_items, order_layout)
 
         result = await app.client.request(
-            "PUT", f"/Sale/Order/Item/{sales_order_id}", json_body=body
+            "PUT", f"/Sale/Order/{order_layout}/{sales_order_id}", json_body=body
         )
         return pick(result, CREATE_RESULT_FIELDS) if isinstance(result, dict) else result
