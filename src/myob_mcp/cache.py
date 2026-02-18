@@ -6,6 +6,8 @@ from typing import Any
 CACHE_TTL_ACCOUNTS = 1800  # 30 minutes
 CACHE_TTL_TAX_CODES = 1800  # 30 minutes
 CACHE_TTL_CONTACTS = 900  # 15 minutes
+CACHE_TTL_EMPLOYEES = 900  # 15 minutes (contact subtype)
+CACHE_TTL_JOBS = 1800  # 30 minutes
 CACHE_TTL_COMPANY_FILES = 3600  # 1 hour
 
 

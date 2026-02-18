@@ -79,8 +79,10 @@ def strip_metadata(obj: dict[str, Any]) -> dict[str, Any]:
 
 _CUSTOMER_REF: dict[str, Any] = {"UID": True, "Name": True}
 _SUPPLIER_REF: dict[str, Any] = {"UID": True, "Name": True}
+_EMPLOYEE_REF: dict[str, Any] = {"UID": True, "Name": True}
 _TAXCODE_REF: dict[str, Any] = {"UID": True, "Code": True}
 _ACCOUNT_REF: dict[str, Any] = {"UID": True, "Name": True}
+_JOB_REF: dict[str, Any] = {"UID": True, "Number": True, "Name": True}
 
 # -- List tool specs (aggressive) --
 
@@ -110,6 +112,22 @@ CONTACT_LIST_FIELDS: dict[str, Any] = {
     "IsIndividual": True,
     "IsActive": True,
     "Type": True,
+}
+
+EMPLOYEE_LIST_FIELDS: dict[str, Any] = {
+    "UID": True,
+    "DisplayID": True,
+    "FirstName": True,
+    "LastName": True,
+    "IsActive": True,
+}
+
+JOB_LIST_FIELDS: dict[str, Any] = {
+    "UID": True,
+    "Number": True,
+    "Name": True,
+    "IsActive": True,
+    "Description": True,
 }
 
 INVOICE_LIST_FIELDS: dict[str, Any] = {
@@ -142,6 +160,8 @@ SALES_ORDER_LIST_FIELDS: dict[str, Any] = {
     "Date": True,
     "Status": True,
     "Customer": _CUSTOMER_REF,
+    "Salesperson": _EMPLOYEE_REF,
+    "CustomerPurchaseOrderNumber": True,
     "Subtotal": True,
     "TotalTax": True,
     "TotalAmount": True,
@@ -226,9 +246,9 @@ _SALES_ORDER_LINE: dict[str, Any] = {
     "ShipQuantity": True,
     "UnitPrice": True,
     "Total": True,
-    "Amount": True,
     "TaxCode": _TAXCODE_REF,
     "Account": _ACCOUNT_REF,
+    "Job": _JOB_REF,
 }
 
 SALES_ORDER_DETAIL_FIELDS: dict[str, Any] = {
@@ -237,6 +257,8 @@ SALES_ORDER_DETAIL_FIELDS: dict[str, Any] = {
     "Date": True,
     "Status": True,
     "Customer": _CUSTOMER_REF,
+    "Salesperson": _EMPLOYEE_REF,
+    "CustomerPurchaseOrderNumber": True,
     "Lines": _SALES_ORDER_LINE,
     "Subtotal": True,
     "TotalTax": True,

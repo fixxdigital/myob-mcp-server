@@ -95,6 +95,11 @@ class MyobApiClient:
         )
         url = self._build_url(path, cfid)
 
+        # MYOB only returns the created/updated entity when returnBody=true
+        if method.upper() in ("POST", "PUT"):
+            params = dict(params or {})
+            params["returnBody"] = "true"
+
         max_retries = 3
         for attempt in range(max_retries + 1):
             headers = await self._build_headers()

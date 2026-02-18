@@ -25,6 +25,7 @@ class MyobConfig:
         "sme-banking",
         "sme-contacts-customer",
         "sme-contacts-supplier",
+        "sme-contacts-employee",
     ])
 
 
@@ -92,6 +93,7 @@ def load_config() -> MyobConfig:
             "sme-banking",
             "sme-contacts-customer",
             "sme-contacts-supplier",
+            "sme-contacts-employee",
         ]),
     )
 

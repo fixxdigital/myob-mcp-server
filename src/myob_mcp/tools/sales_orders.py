@@ -26,7 +26,7 @@ def _build_lines(
 
     Item layout lines require: description, ship_quantity, unit_price, total, account_id
     Service layout lines require: description, amount, account_id
-    Both accept optional: tax_code_id
+    Both accept optional: tax_code_id, job_id
     """
     lines: list[dict[str, Any]] = []
     for i, item in enumerate(line_items):
@@ -50,10 +50,12 @@ def _build_lines(
                 raise ValueError(
                     f"Line item {i}: 'amount' is required for Service layout orders."
                 )
-            line["Amount"] = item["amount"]
+            line["Total"] = item["amount"]
 
         if "tax_code_id" in item:
             line["TaxCode"] = {"UID": item["tax_code_id"]}
+        if "job_id" in item:
+            line["Job"] = {"UID": item["job_id"]}
 
         lines.append(line)
 
@@ -117,8 +119,11 @@ def register(mcp: FastMCP) -> None:
         description="Create a new sales order for a customer. "
         "Set order_layout to 'Item' (default) for quantity-based orders "
         "(line items need: description, ship_quantity, unit_price, total, account_id, "
-        "optional tax_code_id), or 'Service' for amount-based orders "
-        "(line items need: description, amount, account_id, optional tax_code_id)."
+        "optional tax_code_id, optional job_id), or 'Service' for amount-based orders "
+        "(line items need: description, amount, account_id, optional tax_code_id, "
+        "optional job_id). "
+        "Use salesperson_id (employee UID) to assign a salesperson. "
+        "Use customer_purchase_order_number for the customer's PO reference."
     )
     async def create_sales_order(
         ctx: Context,
@@ -131,6 +136,8 @@ def register(mcp: FastMCP) -> None:
         ship_to_address: str | None = None,
         is_tax_inclusive: bool | None = None,
         freight: float | None = None,
+        customer_purchase_order_number: str | None = None,
+        salesperson_id: str | None = None,
     ) -> dict[str, Any]:
         order_layout = order_layout.capitalize()
         if order_layout not in _VALID_LAYOUTS:
@@ -157,6 +164,10 @@ def register(mcp: FastMCP) -> None:
             body["IsTaxInclusive"] = is_tax_inclusive
         if freight is not None:
             body["Freight"] = freight
+        if customer_purchase_order_number is not None:
+            body["CustomerPurchaseOrderNumber"] = customer_purchase_order_number
+        if salesperson_id is not None:
+            body["Salesperson"] = {"UID": salesperson_id}
 
         result = await app.client.request(
             "POST", f"/Sale/Order/{order_layout}", json_body=body
@@ -169,7 +180,9 @@ def register(mcp: FastMCP) -> None:
         "for quantity-based orders, or 'Service' for amount-based orders. "
         "Item line items need: description, ship_quantity, unit_price, total, account_id. "
         "Service line items need: description, amount, account_id. "
-        "Both accept optional tax_code_id."
+        "Both accept optional tax_code_id and job_id. "
+        "Use salesperson_id (employee UID) to assign a salesperson. "
+        "Use customer_purchase_order_number for the customer's PO reference."
     )
     async def edit_sales_order(
         ctx: Context,
@@ -183,6 +196,8 @@ def register(mcp: FastMCP) -> None:
         ship_to_address: str | None = None,
         is_tax_inclusive: bool | None = None,
         freight: float | None = None,
+        customer_purchase_order_number: str | None = None,
+        salesperson_id: str | None = None,
     ) -> dict[str, Any]:
         order_layout = order_layout.capitalize()
         if order_layout not in _VALID_LAYOUTS:
@@ -232,6 +247,10 @@ def register(mcp: FastMCP) -> None:
             body["IsTaxInclusive"] = is_tax_inclusive
         if freight is not None:
             body["Freight"] = freight
+        if customer_purchase_order_number is not None:
+            body["CustomerPurchaseOrderNumber"] = customer_purchase_order_number
+        if salesperson_id is not None:
+            body["Salesperson"] = {"UID": salesperson_id}
 
         if line_items is not None:
             body["Lines"] = _build_lines(line_items, order_layout)

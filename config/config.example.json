@@ -11,6 +11,7 @@
     "sme-purchases",
     "sme-banking",
     "sme-contacts-customer",
-    "sme-contacts-supplier"
+    "sme-contacts-supplier",
+    "sme-contacts-employee"
   ]
 }
