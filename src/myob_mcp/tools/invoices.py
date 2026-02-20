@@ -16,6 +16,9 @@ from ._filters import (
 )
 
 
+_VALID_LAYOUTS = {"Item", "Service"}
+
+
 def register(mcp: FastMCP) -> None:
 
     @mcp.tool(
@@ -66,7 +69,16 @@ def register(mcp: FastMCP) -> None:
         invoice_id: str,
     ) -> dict[str, Any]:
         app = ctx.request_context.lifespan_context
-        result = await app.client.request("GET", f"/Sale/Invoice/{invoice_id}")
+        # The generic /Sale/Invoice/{id} endpoint returns a reduced field set
+        # (no Lines, etc.).  Fetch it first to discover the layout, then
+        # re-fetch from the layout-specific endpoint for full detail.
+        summary = await app.client.request("GET", f"/Sale/Invoice/{invoice_id}")
+        layout = summary.get("InvoiceType", "Item")
+        if layout not in _VALID_LAYOUTS:
+            layout = "Item"
+        result = await app.client.request(
+            "GET", f"/Sale/Invoice/{layout}/{invoice_id}"
+        )
         return pick(fix_subtotal(result), INVOICE_DETAIL_FIELDS)
 
     @mcp.tool(

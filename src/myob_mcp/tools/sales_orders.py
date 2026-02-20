@@ -18,6 +18,31 @@ from ._filters import (
 
 _VALID_LAYOUTS = {"Item", "Service"}
 
+# Fields safe to include in PUT body for sales order updates.
+_PUT_SAFE_FIELDS = {
+    "RowVersion",
+    "Layout",
+    "Number",
+    "Date",
+    "Customer",
+    "Lines",
+    "Comment",
+    "ShipToAddress",
+    "IsTaxInclusive",
+    "Freight",
+    "CustomerPurchaseOrderNumber",
+    "Salesperson",
+}
+
+
+def _strip_uris(obj: Any) -> Any:
+    """Recursively strip URI keys from dicts to avoid sending read-only nested URIs."""
+    if isinstance(obj, dict):
+        return {k: _strip_uris(v) for k, v in obj.items() if k != "URI"}
+    if isinstance(obj, list):
+        return [_strip_uris(item) for item in obj]
+    return obj
+
 
 def _build_lines(
     line_items: list[dict[str, Any]], layout: str
@@ -112,7 +137,17 @@ def register(mcp: FastMCP) -> None:
         sales_order_id: str,
     ) -> dict[str, Any]:
         app = ctx.request_context.lifespan_context
-        result = await app.client.request("GET", f"/Sale/Order/{sales_order_id}")
+        # The generic /Sale/Order/{id} endpoint returns a reduced field set
+        # (no ShipToAddress, Lines, etc.).  Fetch it first to discover the
+        # layout, then re-fetch from the layout-specific endpoint which
+        # returns the full detail including ShipToAddress.
+        summary = await app.client.request("GET", f"/Sale/Order/{sales_order_id}")
+        layout = summary.get("OrderType", "Item")
+        if layout not in _VALID_LAYOUTS:
+            layout = "Item"
+        result = await app.client.request(
+            "GET", f"/Sale/Order/{layout}/{sales_order_id}"
+        )
         return pick(fix_subtotal(result), SALES_ORDER_DETAIL_FIELDS)
 
     @mcp.tool(
@@ -226,7 +261,13 @@ def register(mcp: FastMCP) -> None:
                 f"order_layout='{order_layout}' was specified."
             )
 
-        body = dict(current)
+        # Build PUT body from whitelist of known mutable fields only.
+        # Avoids sending read-only fields (UID, URI, Status, Subtotal, etc.)
+        body: dict[str, Any] = {}
+        for field in _PUT_SAFE_FIELDS:
+            if field in current:
+                body[field] = current[field]
+        body = _strip_uris(body)
 
         if "RowVersion" not in body:
             raise ValueError(

@@ -47,6 +47,7 @@ def pick(obj: dict[str, Any], fields: dict[str, Any]) -> dict[str, Any]:
             elif isinstance(val, list):
                 out[key] = [pick(item, spec) for item in val if isinstance(item, dict)]
     return out
+    return out
 
 
 def pick_list(items: list[dict[str, Any]], fields: dict[str, Any]) -> list[dict[str, Any]]:
@@ -189,12 +190,15 @@ BANK_TXN_LIST_FIELDS: dict[str, Any] = {
 # -- Get/detail tool specs (moderate) --
 
 _INVOICE_LINE: dict[str, Any] = {
+    "Type": True,
     "Description": True,
-    "Quantity": True,
+    "ShipQuantity": True,   # Item layout
+    "UnitCount": True,      # Service layout
     "UnitPrice": True,
     "Total": True,
     "TaxCode": _TAXCODE_REF,
     "Account": _ACCOUNT_REF,
+    "Job": _JOB_REF,
 }
 
 INVOICE_DETAIL_FIELDS: dict[str, Any] = {
@@ -203,6 +207,7 @@ INVOICE_DETAIL_FIELDS: dict[str, Any] = {
     "Date": True,
     "BalanceDueDate": True,
     "Status": True,
+    "Layout": True,
     "Customer": _CUSTOMER_REF,
     "Lines": _INVOICE_LINE,
     "Subtotal": True,
@@ -276,5 +281,8 @@ CREATE_RESULT_FIELDS: dict[str, Any] = {
     "Number": True,
     "Status": True,
     "CompanyName": True,
+    "FirstName": True,
+    "LastName": True,
+    "IsIndividual": True,
     "Type": True,
 }

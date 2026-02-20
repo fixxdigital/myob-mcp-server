@@ -77,12 +77,17 @@ def register(mcp: FastMCP) -> None:
         return strip_metadata(result)
 
     @mcp.tool(
-        description="Create a new contact (customer or supplier)"
+        description="Create a new contact (customer or supplier). "
+        "Set is_individual=True for a person (provide first_name and last_name). "
+        "Leave is_individual=False (default) for a company (provide display_name)."
     )
     async def create_contact(
         ctx: Context,
         display_name: str,
         contact_type: str,
+        is_individual: bool = False,
+        first_name: str | None = None,
+        last_name: str | None = None,
         email: str | None = None,
         phone: str | None = None,
         address: dict[str, str] | None = None,
@@ -96,10 +101,18 @@ def register(mcp: FastMCP) -> None:
         else:
             raise ValueError("contact_type must be 'Customer' or 'Supplier'")
 
-        body: dict[str, Any] = {
-            "CompanyName": display_name,
-            "IsIndividual": False,
-        }
+        body: dict[str, Any] = {"IsIndividual": is_individual}
+
+        if is_individual:
+            if first_name or last_name:
+                body["FirstName"] = first_name or ""
+                body["LastName"] = last_name or ""
+            else:
+                parts = display_name.strip().split(None, 1)
+                body["FirstName"] = parts[0]
+                body["LastName"] = parts[1] if len(parts) > 1 else ""
+        else:
+            body["CompanyName"] = display_name
 
         addresses: list[dict[str, Any]] = []
         addr_entry: dict[str, Any] = {"Location": 1}
