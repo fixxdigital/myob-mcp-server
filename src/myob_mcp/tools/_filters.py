@@ -259,6 +259,9 @@ INVOICE_DETAIL_FIELDS: dict[str, Any] = {
     "Comment": True,
     "IsTaxInclusive": True,
     "JournalMemo": True,
+    "ShipToAddress": True,
+    "CustomerPurchaseOrderNumber": True,
+    "Salesperson": _EMPLOYEE_REF,
 }
 
 _BILL_LINE: dict[str, Any] = {
@@ -313,7 +316,7 @@ SALES_ORDER_DETAIL_FIELDS: dict[str, Any] = {
     "Comment": True,
     "ShipToAddress": True,
     "IsTaxInclusive": True,
-    "Freight": True,
+    "BalanceDueDate": True,
 }
 
 # -- Create/edit confirmation (most aggressive) --

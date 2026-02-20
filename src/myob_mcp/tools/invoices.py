@@ -101,6 +101,8 @@ def register(mcp: FastMCP) -> None:
         notes: str | None = None,
         is_tax_inclusive: bool | None = None,
         salesperson_id: str | None = None,
+        ship_to_address: str | None = None,
+        customer_purchase_order_number: str | None = None,
     ) -> dict[str, Any]:
         invoice_layout = invoice_layout.capitalize()
         if invoice_layout not in _VALID_LAYOUTS:
@@ -126,6 +128,10 @@ def register(mcp: FastMCP) -> None:
             body["IsTaxInclusive"] = is_tax_inclusive
         if salesperson_id is not None:
             body["Salesperson"] = {"UID": salesperson_id}
+        if ship_to_address is not None:
+            body["ShipToAddress"] = ship_to_address
+        if customer_purchase_order_number is not None:
+            body["CustomerPurchaseOrderNumber"] = customer_purchase_order_number
 
         result = await app.client.request(
             "POST", f"/Sale/Invoice/{invoice_layout}", json_body=body

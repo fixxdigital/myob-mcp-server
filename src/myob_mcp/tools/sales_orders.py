@@ -30,7 +30,7 @@ _PUT_SAFE_FIELDS = {
     "Comment",
     "ShipToAddress",
     "IsTaxInclusive",
-    "Freight",
+    "BalanceDueDate",
     "CustomerPurchaseOrderNumber",
     "Salesperson",
 }
@@ -128,9 +128,9 @@ def register(mcp: FastMCP) -> None:
         comment: str | None = None,
         ship_to_address: str | None = None,
         is_tax_inclusive: bool | None = None,
-        freight: float | None = None,
         customer_purchase_order_number: str | None = None,
         salesperson_id: str | None = None,
+        due_date: str | None = None,
     ) -> dict[str, Any]:
         order_layout = order_layout.capitalize()
         if order_layout not in _VALID_LAYOUTS:
@@ -155,8 +155,8 @@ def register(mcp: FastMCP) -> None:
             body["ShipToAddress"] = ship_to_address
         if is_tax_inclusive is not None:
             body["IsTaxInclusive"] = is_tax_inclusive
-        if freight is not None:
-            body["Freight"] = freight
+        if due_date:
+            body["BalanceDueDate"] = due_date
         if customer_purchase_order_number is not None:
             body["CustomerPurchaseOrderNumber"] = customer_purchase_order_number
         if salesperson_id is not None:
@@ -189,9 +189,9 @@ def register(mcp: FastMCP) -> None:
         comment: str | None = None,
         ship_to_address: str | None = None,
         is_tax_inclusive: bool | None = None,
-        freight: float | None = None,
         customer_purchase_order_number: str | None = None,
         salesperson_id: str | None = None,
+        due_date: str | None = None,
     ) -> dict[str, Any]:
         order_layout = order_layout.capitalize()
         if order_layout not in _VALID_LAYOUTS:
@@ -245,8 +245,8 @@ def register(mcp: FastMCP) -> None:
             body["ShipToAddress"] = ship_to_address
         if is_tax_inclusive is not None:
             body["IsTaxInclusive"] = is_tax_inclusive
-        if freight is not None:
-            body["Freight"] = freight
+        if due_date is not None:
+            body["BalanceDueDate"] = due_date
         if customer_purchase_order_number is not None:
             body["CustomerPurchaseOrderNumber"] = customer_purchase_order_number
         if salesperson_id is not None:
