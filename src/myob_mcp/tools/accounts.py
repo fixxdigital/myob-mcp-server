@@ -15,6 +15,8 @@ def register(mcp: FastMCP) -> None:
         "Can filter by account type (Asset, Liability, Income, Expense, Equity) "
         "and active status. Use search to find accounts by number or name "
         "(e.g. search='5-1104' or search='electricity'). "
+        "Combine filter and search to narrow results "
+        "(e.g. filter='Expense', search='1104'). "
         "Use top to limit results and orderby to sort."
     )
     async def list_accounts(
@@ -35,7 +37,7 @@ def register(mcp: FastMCP) -> None:
         if search:
             safe = escape_odata(search).lower()
             filters.append(
-                f"(substringof('{safe}', tolower(Number)) eq true"
+                f"(substringof('{safe}', tolower(DisplayID)) eq true"
                 f" or substringof('{safe}', tolower(Name)) eq true)"
             )
         if filters:

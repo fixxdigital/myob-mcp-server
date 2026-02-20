@@ -132,6 +132,7 @@ _JOB_REF: dict[str, Any] = {"UID": True, "Number": True, "Name": True}
 ACCOUNT_LIST_FIELDS: dict[str, Any] = {
     "UID": True,
     "Name": True,
+    "DisplayID": True,
     "Number": True,
     "Type": True,
     "IsActive": True,
@@ -361,4 +362,14 @@ CREATE_RESULT_FIELDS: dict[str, Any] = {
     "LastName": True,
     "IsIndividual": True,
     "Type": True,
+}
+
+ATTACHMENT_LIST_FIELDS: dict[str, Any] = {
+    "UID": True,
+    "OriginalFileName": True,
+}
+
+ATTACHMENT_UPLOAD_RESULT_FIELDS: dict[str, Any] = {
+    "UID": True,
+    "OriginalFileName": True,
 }
