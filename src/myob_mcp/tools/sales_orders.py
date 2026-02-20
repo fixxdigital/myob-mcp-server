@@ -10,6 +10,7 @@ from ._filters import (
     fix_subtotal,
     pick,
     pick_list,
+    build_lines,
     SALES_ORDER_LIST_FIELDS,
     SALES_ORDER_DETAIL_FIELDS,
     CREATE_RESULT_FIELDS,
@@ -42,49 +43,6 @@ def _strip_uris(obj: Any) -> Any:
     if isinstance(obj, list):
         return [_strip_uris(item) for item in obj]
     return obj
-
-
-def _build_lines(
-    line_items: list[dict[str, Any]], layout: str
-) -> list[dict[str, Any]]:
-    """Build MYOB API line objects from user-provided line item dicts.
-
-    Item layout lines require: description, ship_quantity, unit_price, total, account_id
-    Service layout lines require: description, amount, account_id
-    Both accept optional: tax_code_id, job_id
-    """
-    lines: list[dict[str, Any]] = []
-    for i, item in enumerate(line_items):
-        line: dict[str, Any] = {
-            "Type": "Transaction",
-            "Description": item.get("description", ""),
-            "Account": {"UID": item["account_id"]},
-        }
-
-        if layout == "Item":
-            for field in ("ship_quantity", "unit_price", "total"):
-                if field not in item:
-                    raise ValueError(
-                        f"Line item {i}: '{field}' is required for Item layout orders."
-                    )
-            line["ShipQuantity"] = item["ship_quantity"]
-            line["UnitPrice"] = item["unit_price"]
-            line["Total"] = item["total"]
-        else:  # Service
-            if "amount" not in item:
-                raise ValueError(
-                    f"Line item {i}: 'amount' is required for Service layout orders."
-                )
-            line["Total"] = item["amount"]
-
-        if "tax_code_id" in item:
-            line["TaxCode"] = {"UID": item["tax_code_id"]}
-        if "job_id" in item:
-            line["Job"] = {"UID": item["job_id"]}
-
-        lines.append(line)
-
-    return lines
 
 
 def register(mcp: FastMCP) -> None:
@@ -182,7 +140,7 @@ def register(mcp: FastMCP) -> None:
 
         app = ctx.request_context.lifespan_context
 
-        lines = _build_lines(line_items, order_layout)
+        lines = build_lines(line_items, order_layout)
 
         body: dict[str, Any] = {
             "Customer": {"UID": customer_id},
@@ -295,7 +253,7 @@ def register(mcp: FastMCP) -> None:
             body["Salesperson"] = {"UID": salesperson_id}
 
         if line_items is not None:
-            body["Lines"] = _build_lines(line_items, order_layout)
+            body["Lines"] = build_lines(line_items, order_layout)
 
         result = await app.client.request(
             "PUT", f"/Sale/Order/{order_layout}/{sales_order_id}", json_body=body

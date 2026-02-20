@@ -10,6 +10,7 @@ from ._filters import (
     fix_subtotal,
     pick,
     pick_list,
+    build_lines,
     INVOICE_LIST_FIELDS,
     INVOICE_DETAIL_FIELDS,
     CREATE_RESULT_FIELDS,
@@ -82,7 +83,12 @@ def register(mcp: FastMCP) -> None:
         return pick(fix_subtotal(result), INVOICE_DETAIL_FIELDS)
 
     @mcp.tool(
-        description="Create a new sales invoice for a customer"
+        description="Create a new sales invoice for a customer. "
+        "Set invoice_layout to 'Item' (default) for quantity-based invoices "
+        "(line items need: description, ship_quantity, unit_price, total, account_id, "
+        "optional tax_code_id, optional job_id), or 'Service' for amount-based invoices "
+        "(line items need: description, amount, account_id, optional tax_code_id, "
+        "optional job_id)."
     )
     async def create_invoice(
         ctx: Context,
@@ -90,22 +96,20 @@ def register(mcp: FastMCP) -> None:
         date: str,
         due_date: str,
         line_items: list[dict[str, Any]],
+        invoice_layout: str = "Item",
         reference: str | None = None,
         notes: str | None = None,
+        is_tax_inclusive: bool | None = None,
     ) -> dict[str, Any]:
+        invoice_layout = invoice_layout.capitalize()
+        if invoice_layout not in _VALID_LAYOUTS:
+            raise ValueError(
+                f"Invalid invoice_layout '{invoice_layout}'. Must be 'Item' or 'Service'."
+            )
+
         app = ctx.request_context.lifespan_context
 
-        lines = []
-        for item in line_items:
-            line: dict[str, Any] = {
-                "Description": item["description"],
-                "Quantity": item["quantity"],
-                "UnitPrice": item["unit_price"],
-                "Account": {"UID": item["account_id"]},
-            }
-            if "tax_code_id" in item:
-                line["TaxCode"] = {"UID": item["tax_code_id"]}
-            lines.append(line)
+        lines = build_lines(line_items, invoice_layout)
 
         body: dict[str, Any] = {
             "Customer": {"UID": customer_id},
@@ -117,9 +121,11 @@ def register(mcp: FastMCP) -> None:
             body["Number"] = reference
         if notes:
             body["Comment"] = notes
+        if is_tax_inclusive is not None:
+            body["IsTaxInclusive"] = is_tax_inclusive
 
         result = await app.client.request(
-            "POST", "/Sale/Invoice/Item", json_body=body
+            "POST", f"/Sale/Invoice/{invoice_layout}", json_body=body
         )
         app.client.cache.invalidate("invoices:")
         return pick(result, CREATE_RESULT_FIELDS) if isinstance(result, dict) else result

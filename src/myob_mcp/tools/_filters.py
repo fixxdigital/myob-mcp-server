@@ -47,7 +47,6 @@ def pick(obj: dict[str, Any], fields: dict[str, Any]) -> dict[str, Any]:
             elif isinstance(val, list):
                 out[key] = [pick(item, spec) for item in val if isinstance(item, dict)]
     return out
-    return out
 
 
 def pick_list(items: list[dict[str, Any]], fields: dict[str, Any]) -> list[dict[str, Any]]:
@@ -72,6 +71,49 @@ def fix_subtotal(item: dict[str, Any]) -> dict[str, Any]:
 def strip_metadata(obj: dict[str, Any]) -> dict[str, Any]:
     """Remove URI and RowVersion from top-level keys."""
     return {k: v for k, v in obj.items() if k not in _STRIP_KEYS}
+
+
+def build_lines(
+    line_items: list[dict[str, Any]], layout: str
+) -> list[dict[str, Any]]:
+    """Build MYOB API line objects from user-provided line item dicts.
+
+    Item layout lines require: description, ship_quantity, unit_price, total, account_id
+    Service layout lines require: description, amount, account_id
+    Both accept optional: tax_code_id, job_id
+    """
+    lines: list[dict[str, Any]] = []
+    for i, item in enumerate(line_items):
+        line: dict[str, Any] = {
+            "Type": "Transaction",
+            "Description": item.get("description", ""),
+            "Account": {"UID": item["account_id"]},
+        }
+
+        if layout == "Item":
+            for field in ("ship_quantity", "unit_price", "total"):
+                if field not in item:
+                    raise ValueError(
+                        f"Line item {i}: '{field}' is required for Item layout."
+                    )
+            line["ShipQuantity"] = item["ship_quantity"]
+            line["UnitPrice"] = item["unit_price"]
+            line["Total"] = item["total"]
+        else:  # Service
+            if "amount" not in item:
+                raise ValueError(
+                    f"Line item {i}: 'amount' is required for Service layout."
+                )
+            line["Total"] = item["amount"]
+
+        if "tax_code_id" in item:
+            line["TaxCode"] = {"UID": item["tax_code_id"]}
+        if "job_id" in item:
+            line["Job"] = {"UID": item["job_id"]}
+
+        lines.append(line)
+
+    return lines
 
 
 # ---------------------------------------------------------------------------
