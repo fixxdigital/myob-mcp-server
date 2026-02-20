@@ -231,6 +231,37 @@ BANK_TXN_LIST_FIELDS: dict[str, Any] = {
 
 # -- Get/detail tool specs (moderate) --
 
+_SPEND_MONEY_LINE: dict[str, Any] = {
+    "Amount": True,
+    "Memo": True,
+    "Account": _ACCOUNT_REF,
+    "TaxCode": _TAXCODE_REF,
+    "Job": _JOB_REF,
+}
+
+SPEND_MONEY_DETAIL_FIELDS: dict[str, Any] = {
+    "UID": True,
+    "PaymentNumber": True,
+    "Date": True,
+    "PayFrom": True,
+    "Account": _ACCOUNT_REF,
+    "Contact": {"UID": True, "Name": True, "Type": True},
+    "Memo": True,
+    "Lines": _SPEND_MONEY_LINE,
+    "Amount": True,
+    "IsTaxInclusive": True,
+    "TotalTax": True,
+}
+
+SPEND_MONEY_CREATE_RESULT_FIELDS: dict[str, Any] = {
+    "UID": True,
+    "PaymentNumber": True,
+    "Date": True,
+    "Amount": True,
+    "Memo": True,
+    "Account": _ACCOUNT_REF,
+}
+
 _INVOICE_LINE: dict[str, Any] = {
     "Type": True,
     "Description": True,

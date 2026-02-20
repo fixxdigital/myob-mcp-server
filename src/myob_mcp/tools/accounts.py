@@ -5,7 +5,7 @@ from typing import Any
 from mcp.server.fastmcp import Context, FastMCP
 
 from ..cache import CACHE_TTL_ACCOUNTS
-from ._filters import pick_list, strip_metadata, ACCOUNT_LIST_FIELDS
+from ._filters import escape_odata, pick_list, strip_metadata, ACCOUNT_LIST_FIELDS
 
 
 def register(mcp: FastMCP) -> None:
@@ -13,12 +13,15 @@ def register(mcp: FastMCP) -> None:
     @mcp.tool(
         description="Get all accounts from the chart of accounts. "
         "Can filter by account type (Asset, Liability, Income, Expense, Equity) "
-        "and active status. Use top to limit results and orderby to sort."
+        "and active status. Use search to find accounts by number or name "
+        "(e.g. search='5-1104' or search='electricity'). "
+        "Use top to limit results and orderby to sort."
     )
     async def list_accounts(
         ctx: Context,
         filter: str | None = None,
         is_active: bool | None = None,
+        search: str | None = None,
         top: int | None = None,
         orderby: str | None = None,
     ) -> list[dict[str, Any]]:
@@ -29,12 +32,18 @@ def register(mcp: FastMCP) -> None:
             filters.append(f"Type eq '{filter}'")
         if is_active is not None:
             filters.append(f"IsActive eq {'true' if is_active else 'false'}")
+        if search:
+            safe = escape_odata(search).lower()
+            filters.append(
+                f"(substringof('{safe}', tolower(Number)) eq true"
+                f" or substringof('{safe}', tolower(Name)) eq true)"
+            )
         if filters:
             params["$filter"] = " and ".join(filters)
         if orderby:
             params["$orderby"] = orderby
 
-        cache_key = f"accounts:{filter}:{is_active}:{top}:{orderby}"
+        cache_key = f"accounts:{filter}:{is_active}:{search}:{top}:{orderby}"
         items = await app.client.request_paged(
             "/GeneralLedger/Account",
             params=params,
