@@ -281,6 +281,18 @@ CUSTOMER_PAYMENT_CREATE_RESULT_FIELDS: dict[str, Any] = {
     "Invoices": _PAYMENT_INVOICE_LINE,
 }
 
+SALES_ORDER_DEPOSIT_CREATE_RESULT_FIELDS: dict[str, Any] = {
+    "UID": True,
+    "ReceiptNumber": True,
+    "Date": True,
+    "AmountReceived": True,
+    "PaymentMethod": True,
+    "Memo": True,
+    "Account": _ACCOUNT_REF,
+    "Customer": _CUSTOMER_REF,
+    "Invoices": _PAYMENT_INVOICE_LINE,
+}
+
 _INVOICE_LINE: dict[str, Any] = {
     "Type": True,
     "Description": True,
