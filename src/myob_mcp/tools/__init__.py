@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 def register_all_tools(mcp: FastMCP) -> None:
     from . import (
         accounts, attachments, banking, bills, company, contacts,
-        employees, invoices, jobs, oauth, sales_orders, tax_codes,
+        employees, invoices, jobs, oauth, payments, sales_orders, tax_codes,
     )
 
     oauth.register(mcp)
@@ -19,6 +19,7 @@ def register_all_tools(mcp: FastMCP) -> None:
     contacts.register(mcp)
     employees.register(mcp)
     invoices.register(mcp)
+    payments.register(mcp)
     bills.register(mcp)
     banking.register(mcp)
     attachments.register(mcp)

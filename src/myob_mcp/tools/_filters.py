@@ -263,6 +263,24 @@ SPEND_MONEY_CREATE_RESULT_FIELDS: dict[str, Any] = {
     "Account": _ACCOUNT_REF,
 }
 
+_PAYMENT_INVOICE_LINE: dict[str, Any] = {
+    "UID": True,
+    "Number": True,
+    "AmountApplied": True,
+}
+
+CUSTOMER_PAYMENT_CREATE_RESULT_FIELDS: dict[str, Any] = {
+    "UID": True,
+    "ReceiptNumber": True,
+    "Date": True,
+    "AmountReceived": True,
+    "PaymentMethod": True,
+    "Memo": True,
+    "Account": _ACCOUNT_REF,
+    "Customer": _CUSTOMER_REF,
+    "Invoices": _PAYMENT_INVOICE_LINE,
+}
+
 _INVOICE_LINE: dict[str, Any] = {
     "Type": True,
     "Description": True,
