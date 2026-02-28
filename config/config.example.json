@@ -3,7 +3,7 @@
   "client_secret": "${MYOB_CLIENT_SECRET}",
   "redirect_uri": "http://localhost:33333/callback",
   "default_company_file_id": "",
-  "token_path": "config/oauth_tokens.json",
+  "token_path": "oauth_tokens.json",
   "scopes": [
     "sme-company-file",
     "sme-general-ledger",

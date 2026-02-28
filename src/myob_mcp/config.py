@@ -16,7 +16,7 @@ class MyobConfig:
     client_secret: str
     redirect_uri: str = "http://localhost:33333/callback"
     default_company_file_id: str = ""
-    token_path: str = "config/oauth_tokens.json"
+    token_path: str = "oauth_tokens.json"
     scopes: list[str] = field(default_factory=lambda: [
         "sme-company-file",
         "sme-general-ledger",
@@ -29,13 +29,29 @@ class MyobConfig:
     ])
 
 
-def _get_project_root() -> Path:
-    """Walk up from this file to find the directory containing pyproject.toml."""
-    current = Path(__file__).resolve().parent
-    for parent in [current, *current.parents]:
-        if (parent / "pyproject.toml").exists():
-            return parent
-    return Path.cwd()
+def _get_config_home() -> Path:
+    """Return the configuration directory, searching multiple locations.
+
+    Search order:
+      1. $MYOB_MCP_CONFIG env var (parent directory of the specified file)
+      2. ./config/config.json relative to CWD (running from project clone)
+      3. Platform user config dir (~/.config/myob-mcp or %APPDATA%/myob-mcp)
+    """
+    env = os.environ.get("MYOB_MCP_CONFIG")
+    if env:
+        return Path(env).resolve().parent
+
+    cwd_config = Path.cwd() / "config" / "config.json"
+    if cwd_config.exists():
+        return cwd_config.parent
+
+    if os.name == "nt":
+        base = Path(os.environ.get("APPDATA", "~")).expanduser()
+    else:
+        base = Path(os.environ.get("XDG_CONFIG_HOME", "~/.config")).expanduser()
+    user_dir = base / "myob-mcp"
+    user_dir.mkdir(parents=True, exist_ok=True)
+    return user_dir
 
 
 def _substitute_env_vars(obj: object) -> object:
@@ -55,13 +71,15 @@ def _substitute_env_vars(obj: object) -> object:
 
 def load_config() -> MyobConfig:
     """Load configuration from JSON file or environment variables."""
-    project_root = _get_project_root()
+    config_home = _get_config_home()
 
     config_path_str = os.environ.get("MYOB_MCP_CONFIG")
     if config_path_str:
         config_path = Path(config_path_str)
     else:
-        config_path = project_root / "config" / "config.json"
+        cwd_config = Path.cwd() / "config" / "config.json"
+        user_config = config_home / "config.json"
+        config_path = cwd_config if cwd_config.exists() else user_config
 
     if config_path.exists():
         logger.info("Loading config from %s", config_path)
@@ -75,9 +93,13 @@ def load_config() -> MyobConfig:
             "client_secret": os.environ.get("MYOB_CLIENT_SECRET", ""),
         }
 
-    # Resolve token_path relative to project root
-    token_path = data.get("token_path", "config/oauth_tokens.json")
-    resolved_token_path = str(project_root / token_path)
+    # Resolve token_path relative to config home directory
+    token_path = data.get("token_path", "oauth_tokens.json")
+    token_path_obj = Path(token_path)
+    if token_path_obj.is_absolute():
+        resolved_token_path = str(token_path_obj)
+    else:
+        resolved_token_path = str(config_home / token_path)
 
     config = MyobConfig(
         client_id=data.get("client_id", ""),
