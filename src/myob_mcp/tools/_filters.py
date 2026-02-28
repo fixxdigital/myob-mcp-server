@@ -126,6 +126,7 @@ _EMPLOYEE_REF: dict[str, Any] = {"UID": True, "Name": True}
 _TAXCODE_REF: dict[str, Any] = {"UID": True, "Code": True}
 _ACCOUNT_REF: dict[str, Any] = {"UID": True, "Name": True}
 _JOB_REF: dict[str, Any] = {"UID": True, "Number": True, "Name": True}
+_TERMS_REF: dict[str, Any] = {"PaymentIsDue": True, "DueDate": True}
 
 # -- List tool specs (aggressive) --
 
@@ -180,6 +181,7 @@ INVOICE_LIST_FIELDS: dict[str, Any] = {
     "Date": True,
     "Status": True,
     "Customer": _CUSTOMER_REF,
+    "Terms": _TERMS_REF,
     "Subtotal": True,
     "TotalTax": True,
     "TotalAmount": True,
@@ -313,6 +315,7 @@ INVOICE_DETAIL_FIELDS: dict[str, Any] = {
     "Status": True,
     "Layout": True,
     "Customer": _CUSTOMER_REF,
+    "Terms": _TERMS_REF,
     "Lines": _INVOICE_LINE,
     "Subtotal": True,
     "TotalTax": True,
