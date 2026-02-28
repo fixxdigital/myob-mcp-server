@@ -19,22 +19,19 @@ This installs the `myob-mcp-server` command.
 
 ## Configuration
 
-Set your MYOB API credentials using either method:
-
-**Environment variables:**
+Create a `.env` file from the template:
 
 ```bash
-export MYOB_CLIENT_ID=your-client-id
-export MYOB_CLIENT_SECRET=your-client-secret
+cp .env.example .env
 ```
 
-**Config file:**
+Edit `.env` with your MYOB API credentials. Then either use the config file (which supports `${ENV_VAR}` substitution):
 
 ```bash
 cp config/config.example.json config/config.json
 ```
 
-Edit `config/config.json` with your credentials. Values support `${ENV_VAR}` substitution.
+Or pass credentials directly via the MCP client config (see below).
 
 The server searches for config in this order:
 1. `$MYOB_MCP_CONFIG` (path to a specific config file)
@@ -49,11 +46,17 @@ Add to your Claude Desktop or Claude Code MCP config:
 {
   "mcpServers": {
     "myob": {
-      "command": "myob-mcp-server"
+      "command": "myob-mcp-server",
+      "env": {
+        "MYOB_CLIENT_ID": "your-client-id",
+        "MYOB_CLIENT_SECRET": "your-client-secret"
+      }
     }
   }
 }
 ```
+
+The `env` block can be omitted if you use a config file instead.
 
 ## First Run
 
