@@ -71,9 +71,9 @@ Use the `oauth_authorize` tool to authenticate. This opens a browser window for 
 - **Contacts** -- list, get, create customers and suppliers
 - **Employees** -- list employees
 - **Invoices** -- list, get, create sales invoices
-- **Payments** -- record customer payments
+- **Payments** -- list and record customer payments, list, get and record supplier payments
 - **Bills** -- list, get, create purchase bills
-- **Banking** -- list bank accounts and transactions, create spend money transactions
+- **Banking** -- list bank accounts, spend money and receive money transactions; create spend and receive money transactions
 - **Attachments** -- upload, list, delete attachments on bills and spend money transactions
 - **Jobs** -- list jobs
 - **Sales Orders** -- list, get, create, edit sales orders and record deposits

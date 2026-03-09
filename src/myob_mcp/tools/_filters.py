@@ -265,6 +265,49 @@ SPEND_MONEY_CREATE_RESULT_FIELDS: dict[str, Any] = {
     "Account": _ACCOUNT_REF,
 }
 
+_RECEIVE_MONEY_LINE: dict[str, Any] = {
+    "Amount": True,
+    "Memo": True,
+    "Account": _ACCOUNT_REF,
+    "TaxCode": _TAXCODE_REF,
+    "Job": _JOB_REF,
+}
+
+RECEIVE_MONEY_LIST_FIELDS: dict[str, Any] = {
+    "UID": True,
+    "Date": True,
+    "AmountReceived": True,
+    "Memo": True,
+    "ReceiptNumber": True,
+    "DepositTo": True,
+    "Account": _ACCOUNT_REF,
+    "Contact": {"UID": True, "Name": True, "Type": True},
+}
+
+RECEIVE_MONEY_DETAIL_FIELDS: dict[str, Any] = {
+    "UID": True,
+    "ReceiptNumber": True,
+    "Date": True,
+    "DepositTo": True,
+    "Account": _ACCOUNT_REF,
+    "Contact": {"UID": True, "Name": True, "Type": True},
+    "Memo": True,
+    "Lines": _RECEIVE_MONEY_LINE,
+    "AmountReceived": True,
+    "IsTaxInclusive": True,
+    "TotalTax": True,
+    "PaymentMethod": True,
+}
+
+RECEIVE_MONEY_CREATE_RESULT_FIELDS: dict[str, Any] = {
+    "UID": True,
+    "ReceiptNumber": True,
+    "Date": True,
+    "AmountReceived": True,
+    "Memo": True,
+    "Account": _ACCOUNT_REF,
+}
+
 _PAYMENT_INVOICE_LINE: dict[str, Any] = {
     "UID": True,
     "Number": True,
@@ -293,6 +336,56 @@ SALES_ORDER_DEPOSIT_CREATE_RESULT_FIELDS: dict[str, Any] = {
     "Account": _ACCOUNT_REF,
     "Customer": _CUSTOMER_REF,
     "Invoices": _PAYMENT_INVOICE_LINE,
+}
+
+CUSTOMER_PAYMENT_LIST_FIELDS: dict[str, Any] = {
+    "UID": True,
+    "ReceiptNumber": True,
+    "Date": True,
+    "AmountReceived": True,
+    "PaymentMethod": True,
+    "Memo": True,
+    "Account": _ACCOUNT_REF,
+    "Customer": _CUSTOMER_REF,
+}
+
+_SUPPLIER_PAYMENT_BILL_LINE: dict[str, Any] = {
+    "Type": True,
+    "Purchase": {"UID": True, "Number": True},
+    "AmountApplied": True,
+}
+
+SUPPLIER_PAYMENT_LIST_FIELDS: dict[str, Any] = {
+    "UID": True,
+    "PaymentNumber": True,
+    "Date": True,
+    "AmountPaid": True,
+    "PayFrom": True,
+    "Memo": True,
+    "Account": _ACCOUNT_REF,
+    "Supplier": _SUPPLIER_REF,
+}
+
+SUPPLIER_PAYMENT_DETAIL_FIELDS: dict[str, Any] = {
+    "UID": True,
+    "PaymentNumber": True,
+    "Date": True,
+    "PayFrom": True,
+    "Account": _ACCOUNT_REF,
+    "Supplier": _SUPPLIER_REF,
+    "Memo": True,
+    "Lines": _SUPPLIER_PAYMENT_BILL_LINE,
+    "AmountPaid": True,
+    "DeliveryStatus": True,
+}
+
+SUPPLIER_PAYMENT_CREATE_RESULT_FIELDS: dict[str, Any] = {
+    "UID": True,
+    "PaymentNumber": True,
+    "Date": True,
+    "AmountPaid": True,
+    "Memo": True,
+    "Account": _ACCOUNT_REF,
 }
 
 _INVOICE_LINE: dict[str, Any] = {
