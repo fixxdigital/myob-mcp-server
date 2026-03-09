@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from mcp.server.fastmcp import Context, FastMCP
@@ -9,13 +10,86 @@ from ._filters import (
     pick,
     pick_list,
     BANK_ACCOUNT_LIST_FIELDS,
-    BANK_TXN_LIST_FIELDS,
     SPEND_MONEY_DETAIL_FIELDS,
     SPEND_MONEY_CREATE_RESULT_FIELDS,
     RECEIVE_MONEY_LIST_FIELDS,
     RECEIVE_MONEY_DETAIL_FIELDS,
     RECEIVE_MONEY_CREATE_RESULT_FIELDS,
 )
+
+
+# ---------------------------------------------------------------------------
+# Helpers for the unified list_bank_transactions tool
+# ---------------------------------------------------------------------------
+
+
+def _build_date_filters(
+    date_from: str | None, date_to: str | None
+) -> list[str]:
+    """Build OData date range filter clauses."""
+    parts: list[str] = []
+    if date_from:
+        validate_date(date_from, "date_from")
+        parts.append(f"Date ge datetime'{date_from}'")
+    if date_to:
+        validate_date(date_to, "date_to")
+        parts.append(f"Date le datetime'{date_to}'")
+    return parts
+
+
+def _contact_ref(obj: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Extract {UID, Name} from a contact-like object, or return None."""
+    if obj and "UID" in obj:
+        return {"UID": obj["UID"], "Name": obj.get("Name", "")}
+    return None
+
+
+def _normalize_spend_money(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "UID": item.get("UID"),
+        "Date": item.get("Date"),
+        "Type": "SpendMoney",
+        "TotalAmount": item.get("Amount"),
+        "Memo": item.get("Memo"),
+        "Contact": _contact_ref(item.get("Contact")),
+        "Account": _contact_ref(item.get("Account")),
+    }
+
+
+def _normalize_receive_money(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "UID": item.get("UID"),
+        "Date": item.get("Date"),
+        "Type": "ReceiveMoney",
+        "TotalAmount": item.get("AmountReceived"),
+        "Memo": item.get("Memo"),
+        "Contact": _contact_ref(item.get("Contact")),
+        "Account": _contact_ref(item.get("Account")),
+    }
+
+
+def _normalize_customer_payment(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "UID": item.get("UID"),
+        "Date": item.get("Date"),
+        "Type": "CustomerPayment",
+        "TotalAmount": item.get("AmountReceived"),
+        "Memo": item.get("Memo"),
+        "Contact": _contact_ref(item.get("Customer")),
+        "Account": _contact_ref(item.get("Account")),
+    }
+
+
+def _normalize_supplier_payment(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "UID": item.get("UID"),
+        "Date": item.get("Date"),
+        "Type": "SupplierPayment",
+        "TotalAmount": item.get("AmountPaid"),
+        "Memo": item.get("Memo"),
+        "Contact": _contact_ref(item.get("Supplier")),
+        "Account": _contact_ref(item.get("Account")),
+    }
 
 
 def register(mcp: FastMCP) -> None:
@@ -39,9 +113,11 @@ def register(mcp: FastMCP) -> None:
         return pick_list(items, BANK_ACCOUNT_LIST_FIELDS)
 
     @mcp.tool(
-        description="Get bank transactions for a specific bank account. "
-        "Can filter by date range. Use top to limit results and orderby to sort "
-        "(e.g. orderby='Date desc' for most recent first)."
+        description="Get all bank transactions for a specific bank account. "
+        "Returns all transaction types: spend money, receive money, "
+        "customer payments, and supplier payments. Results are sorted by "
+        "date descending (newest first). Can filter by date range. "
+        "Use top to limit total results."
     )
     async def list_bank_transactions(
         ctx: Context,
@@ -49,26 +125,53 @@ def register(mcp: FastMCP) -> None:
         date_from: str | None = None,
         date_to: str | None = None,
         top: int | None = None,
-        orderby: str | None = None,
     ) -> list[dict[str, Any]]:
         app = ctx.request_context.lifespan_context
-        params: dict[str, str] = {}
-        filters: list[str] = []
-        filters.append(f"Account/UID eq guid'{bank_account_id}'")
-        if date_from:
-            validate_date(date_from, "date_from")
-            filters.append(f"Date ge datetime'{date_from}'")
-        if date_to:
-            validate_date(date_to, "date_to")
-            filters.append(f"Date le datetime'{date_to}'")
-        params["$filter"] = " and ".join(filters)
-        if orderby:
-            params["$orderby"] = orderby
+        date_filters = _build_date_filters(date_from, date_to)
+        acct_filter = f"Account/UID eq guid'{bank_account_id}'"
 
-        items = await app.client.request_paged(
-            "/Banking/SpendMoneyTxn", params=params, top=top
+        spend_filter = " and ".join([acct_filter] + date_filters)
+        receive_filter = " and ".join(
+            ["DepositTo eq 'Account'", acct_filter] + date_filters
         )
-        return pick_list(items, BANK_TXN_LIST_FIELDS)
+        cust_pay_filter = " and ".join([acct_filter] + date_filters)
+        supp_pay_filter = " and ".join(
+            ["PayFrom eq 'Account'", acct_filter] + date_filters
+        )
+
+        spend_items, receive_items, cust_items, supp_items = (
+            await asyncio.gather(
+                app.client.request_paged(
+                    "/Banking/SpendMoneyTxn",
+                    params={"$filter": spend_filter},
+                ),
+                app.client.request_paged(
+                    "/Banking/ReceiveMoneyTxn",
+                    params={"$filter": receive_filter},
+                ),
+                app.client.request_paged(
+                    "/Sale/CustomerPayment",
+                    params={"$filter": cust_pay_filter},
+                ),
+                app.client.request_paged(
+                    "/Purchase/SupplierPayment",
+                    params={"$filter": supp_pay_filter},
+                ),
+            )
+        )
+
+        merged: list[dict[str, Any]] = []
+        merged.extend(_normalize_spend_money(i) for i in spend_items)
+        merged.extend(_normalize_receive_money(i) for i in receive_items)
+        merged.extend(_normalize_customer_payment(i) for i in cust_items)
+        merged.extend(_normalize_supplier_payment(i) for i in supp_items)
+
+        merged.sort(key=lambda x: x.get("Date", ""), reverse=True)
+
+        if top is not None:
+            merged = merged[:top]
+
+        return merged
 
     @mcp.tool(
         description="Get receive money (deposit) transactions for a specific "

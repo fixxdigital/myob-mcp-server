@@ -9,6 +9,7 @@ from ._filters import (
     pick,
     pick_list,
     CUSTOMER_PAYMENT_CREATE_RESULT_FIELDS,
+    CUSTOMER_PAYMENT_DETAIL_FIELDS,
     CUSTOMER_PAYMENT_LIST_FIELDS,
     SALES_ORDER_DEPOSIT_CREATE_RESULT_FIELDS,
     SUPPLIER_PAYMENT_LIST_FIELDS,
@@ -67,6 +68,20 @@ def register(mcp: FastMCP) -> None:
             "/Sale/CustomerPayment", params=params, top=top
         )
         return pick_list(items, CUSTOMER_PAYMENT_LIST_FIELDS)
+
+    @mcp.tool(
+        description="Get detailed information about a specific customer payment "
+        "by its UID"
+    )
+    async def get_customer_payment(
+        ctx: Context,
+        payment_id: str,
+    ) -> dict[str, Any]:
+        app = ctx.request_context.lifespan_context
+        result = await app.client.request(
+            "GET", f"/Sale/CustomerPayment/{payment_id}"
+        )
+        return pick(result, CUSTOMER_PAYMENT_DETAIL_FIELDS)
 
     @mcp.tool(
         description="Create a new customer payment to record money received "

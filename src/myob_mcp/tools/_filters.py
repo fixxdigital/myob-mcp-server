@@ -349,6 +349,18 @@ CUSTOMER_PAYMENT_LIST_FIELDS: dict[str, Any] = {
     "Customer": _CUSTOMER_REF,
 }
 
+CUSTOMER_PAYMENT_DETAIL_FIELDS: dict[str, Any] = {
+    "UID": True,
+    "ReceiptNumber": True,
+    "Date": True,
+    "Account": _ACCOUNT_REF,
+    "Customer": _CUSTOMER_REF,
+    "Memo": True,
+    "Invoices": _PAYMENT_INVOICE_LINE,
+    "AmountReceived": True,
+    "PaymentMethod": True,
+}
+
 _SUPPLIER_PAYMENT_BILL_LINE: dict[str, Any] = {
     "Type": True,
     "Purchase": {"UID": True, "Number": True},
