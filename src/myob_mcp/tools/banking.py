@@ -49,7 +49,7 @@ def _normalize_spend_money(item: dict[str, Any]) -> dict[str, Any]:
         "UID": item.get("UID"),
         "Date": item.get("Date"),
         "Type": "SpendMoney",
-        "TotalAmount": item.get("Amount"),
+        "TotalAmount": item.get("AmountPaid"),
         "Memo": item.get("Memo"),
         "Contact": _contact_ref(item.get("Contact")),
         "Account": _contact_ref(item.get("Account")),
