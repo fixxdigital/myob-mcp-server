@@ -251,7 +251,8 @@ SPEND_MONEY_DETAIL_FIELDS: dict[str, Any] = {
     "Contact": {"UID": True, "Name": True, "Type": True},
     "Memo": True,
     "Lines": _SPEND_MONEY_LINE,
-    "Amount": True,
+    "AmountPaid": True,
+    "StatementParticulars": True,
     "IsTaxInclusive": True,
     "TotalTax": True,
 }
@@ -374,6 +375,7 @@ SUPPLIER_PAYMENT_LIST_FIELDS: dict[str, Any] = {
     "AmountPaid": True,
     "PayFrom": True,
     "Memo": True,
+    "StatementParticulars": True,
     "Account": _ACCOUNT_REF,
     "Supplier": _SUPPLIER_REF,
 }
@@ -386,6 +388,7 @@ SUPPLIER_PAYMENT_DETAIL_FIELDS: dict[str, Any] = {
     "Account": _ACCOUNT_REF,
     "Supplier": _SUPPLIER_REF,
     "Memo": True,
+    "StatementParticulars": True,
     "Lines": _SUPPLIER_PAYMENT_BILL_LINE,
     "AmountPaid": True,
     "DeliveryStatus": True,

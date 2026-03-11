@@ -204,7 +204,10 @@ def register(mcp: FastMCP) -> None:
     @mcp.tool(
         description="Get supplier payments. Can filter by bank account, date range, "
         "and supplier. Use top to limit results and orderby to sort "
-        "(e.g. orderby='Date desc' for most recent first)."
+        "(e.g. orderby='Date desc' for most recent first). "
+        "Set pay_from='ElectronicPayments' to find EFT batch payments "
+        "(these post to the electronic clearing account, not the bank account, "
+        "so bank_account_id won't find them)."
     )
     async def list_supplier_payments(
         ctx: Context,
@@ -212,14 +215,24 @@ def register(mcp: FastMCP) -> None:
         supplier_id: str | None = None,
         date_from: str | None = None,
         date_to: str | None = None,
+        pay_from: str | None = None,
         top: int | None = None,
         orderby: str | None = None,
     ) -> list[dict[str, Any]]:
         app = ctx.request_context.lifespan_context
         params: dict[str, str] = {}
         filters: list[str] = []
+        if pay_from:
+            valid = {"Account", "ElectronicPayments"}
+            if pay_from not in valid:
+                raise ValueError(
+                    f"Invalid pay_from '{pay_from}'. "
+                    f"Must be 'Account' or 'ElectronicPayments'."
+                )
+            filters.append(f"PayFrom eq '{pay_from}'")
         if bank_account_id:
-            filters.append("PayFrom eq 'Account'")
+            if not pay_from:
+                filters.append("PayFrom eq 'Account'")
             filters.append(f"Account/UID eq guid'{bank_account_id}'")
         if supplier_id:
             filters.append(f"Supplier/UID eq guid'{supplier_id}'")
