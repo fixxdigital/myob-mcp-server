@@ -20,8 +20,9 @@ def register(mcp: FastMCP) -> None:
 
     @mcp.tool(
         description="Get purchase bills. Can filter by date range, status, supplier, "
-        "and search by bill number. Use top to limit results and orderby to sort "
-        "(e.g. orderby='Date desc' for most recent first)."
+        "and search by exact bill number or supplier invoice number. Use top to "
+        "limit results and orderby to sort (e.g. orderby='Date desc' for most "
+        "recent first)."
     )
     async def list_bills(
         ctx: Context,
@@ -47,7 +48,14 @@ def register(mcp: FastMCP) -> None:
         if supplier_id:
             filters.append(f"Supplier/UID eq guid'{supplier_id}'")
         if search:
-            filters.append(f"substringof('{escape_odata(search)}', Number) eq true")
+            # MYOB's /Purchase/Bill endpoint throws 500 InternalError for
+            # substringof()/startswith() (unlike Sale/Invoice etc.), so match
+            # exactly. Also match SupplierInvoiceNumber, where the supplier's
+            # own invoice number lives.
+            safe = escape_odata(search)
+            filters.append(
+                f"(Number eq '{safe}' or SupplierInvoiceNumber eq '{safe}')"
+            )
         if filters:
             params["$filter"] = " and ".join(filters)
         if orderby:
