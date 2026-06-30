@@ -223,28 +223,35 @@ def register(mcp: FastMCP) -> None:
 
     @mcp.tool(
         description="Create a new receive money transaction. Records money "
-        "received into a bank account. Each line item allocates part of the "
-        "receipt to an income or liability account. Line items need: account_id "
-        "(income/liability account UID), amount. Optional per-line: description, "
-        "tax_code_id, job_id."
+        "received. Each line item allocates part of the receipt to an income "
+        "or liability account. Line items need: account_id "
+        "(income/liability account UID), amount, tax_code_id. Optional "
+        "per-line: description, job_id. deposit_to selects where the money "
+        "lands: 'Account' = deposit into the bank account named by "
+        "bank_account_id (required in this mode); 'UndepositedFunds' = hold in "
+        "undeposited funds (bank_account_id not used)."
     )
     async def create_receive_money_transaction(
         ctx: Context,
-        bank_account_id: str,
         date: str,
         line_items: list[dict[str, Any]],
+        bank_account_id: str | None = None,
         contact_id: str | None = None,
         memo: str | None = None,
         is_tax_inclusive: bool | None = None,
-        payment_method: str = "Account",
+        deposit_to: str = "Account",
     ) -> dict[str, Any]:
         app = ctx.request_context.lifespan_context
 
-        valid_methods = {"Account", "ElectronicPayments"}
-        if payment_method not in valid_methods:
+        valid_deposit_to = {"Account", "UndepositedFunds"}
+        if deposit_to not in valid_deposit_to:
             raise ValueError(
-                f"Invalid payment_method '{payment_method}'. "
-                f"Must be 'Account' or 'ElectronicPayments'."
+                f"Invalid deposit_to '{deposit_to}'. "
+                f"Must be 'Account' or 'UndepositedFunds'."
+            )
+        if deposit_to == "Account" and not bank_account_id:
+            raise ValueError(
+                "bank_account_id is required when deposit_to='Account'."
             )
 
         lines: list[dict[str, Any]] = []
@@ -253,6 +260,10 @@ def register(mcp: FastMCP) -> None:
                 raise ValueError(f"Line item {i}: 'account_id' is required.")
             if "amount" not in item:
                 raise ValueError(f"Line item {i}: 'amount' is required.")
+            if "tax_code_id" not in item:
+                raise ValueError(
+                    f"Line item {i}: 'tax_code_id' is required."
+                )
             line: dict[str, Any] = {
                 "Account": {"UID": item["account_id"]},
                 "Amount": item["amount"],
@@ -267,11 +278,11 @@ def register(mcp: FastMCP) -> None:
 
         body: dict[str, Any] = {
             "Date": date,
-            "DepositTo": "Account",
-            "Account": {"UID": bank_account_id},
-            "PaymentMethod": payment_method,
+            "DepositTo": deposit_to,
             "Lines": lines,
         }
+        if deposit_to == "Account":
+            body["Account"] = {"UID": bank_account_id}
         if contact_id:
             body["Contact"] = {"UID": contact_id}
         if memo:
@@ -307,8 +318,10 @@ def register(mcp: FastMCP) -> None:
         description="Create a new spend money transaction. Records money paid "
         "out from a bank account. Each line item allocates part of the spend "
         "to an expense or asset account. Line items need: account_id "
-        "(expense/asset account UID), amount. Optional per-line: description, "
-        "tax_code_id, job_id."
+        "(expense/asset account UID), amount, tax_code_id. Optional per-line: "
+        "description, job_id. pay_from selects the source of funds: "
+        "'Account' = pay from the bank account; 'ElectronicPayments' = "
+        "electronic clearing account (EFT payments)."
     )
     async def create_spend_money_transaction(
         ctx: Context,
@@ -318,14 +331,14 @@ def register(mcp: FastMCP) -> None:
         contact_id: str | None = None,
         memo: str | None = None,
         is_tax_inclusive: bool | None = None,
-        payment_method: str = "Account",
+        pay_from: str = "Account",
     ) -> dict[str, Any]:
         app = ctx.request_context.lifespan_context
 
-        valid_methods = {"Account", "ElectronicPayments"}
-        if payment_method not in valid_methods:
+        valid_pay_from = {"Account", "ElectronicPayments"}
+        if pay_from not in valid_pay_from:
             raise ValueError(
-                f"Invalid payment_method '{payment_method}'. "
+                f"Invalid pay_from '{pay_from}'. "
                 f"Must be 'Account' or 'ElectronicPayments'."
             )
 
@@ -335,6 +348,10 @@ def register(mcp: FastMCP) -> None:
                 raise ValueError(f"Line item {i}: 'account_id' is required.")
             if "amount" not in item:
                 raise ValueError(f"Line item {i}: 'amount' is required.")
+            if "tax_code_id" not in item:
+                raise ValueError(
+                    f"Line item {i}: 'tax_code_id' is required."
+                )
             line: dict[str, Any] = {
                 "Account": {"UID": item["account_id"]},
                 "Amount": item["amount"],
@@ -349,7 +366,7 @@ def register(mcp: FastMCP) -> None:
 
         body: dict[str, Any] = {
             "Date": date,
-            "PayFrom": payment_method,
+            "PayFrom": pay_from,
             "Account": {"UID": bank_account_id},
             "Lines": lines,
         }

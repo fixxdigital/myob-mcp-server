@@ -27,7 +27,7 @@ _VALID_PAYMENT_METHODS = {
 }
 
 
-_VALID_SUPPLIER_PAYMENT_METHODS = {"Account", "ElectronicPayments"}
+_VALID_SUPPLIER_PAY_FROM = {"Account", "ElectronicPayments"}
 
 
 def register(mcp: FastMCP) -> None:
@@ -270,7 +270,9 @@ def register(mcp: FastMCP) -> None:
         description="Create a new supplier payment to record money paid to a "
         "supplier and apply it to one or more outstanding bills. Each entry in "
         "the bills array needs: bill_id (the bill UID) and amount_applied "
-        "(the amount to apply to that bill)."
+        "(the amount to apply to that bill). pay_from selects the source of "
+        "funds: 'Account' = pay from the bank account; 'ElectronicPayments' = "
+        "electronic clearing account (EFT batch payments)."
     )
     async def create_supplier_payment(
         ctx: Context,
@@ -280,16 +282,16 @@ def register(mcp: FastMCP) -> None:
         bank_account_id: str,
         bills: list[dict[str, Any]],
         memo: str | None = None,
-        payment_method: str = "Account",
+        pay_from: str = "Account",
     ) -> dict[str, Any]:
         app = ctx.request_context.lifespan_context
 
         validate_date(payment_date, "payment_date")
 
-        if payment_method not in _VALID_SUPPLIER_PAYMENT_METHODS:
+        if pay_from not in _VALID_SUPPLIER_PAY_FROM:
             raise ValueError(
-                f"Invalid payment_method '{payment_method}'. "
-                f"Must be one of: {', '.join(sorted(_VALID_SUPPLIER_PAYMENT_METHODS))}."
+                f"Invalid pay_from '{pay_from}'. "
+                f"Must be one of: {', '.join(sorted(_VALID_SUPPLIER_PAY_FROM))}."
             )
 
         if not bills:
@@ -306,7 +308,7 @@ def register(mcp: FastMCP) -> None:
                     f"Bill entry {i}: 'amount_applied' is required."
                 )
             bill_lines.append({
-                "UID": bill["bill_id"],
+                "Purchase": {"UID": bill["bill_id"]},
                 "AmountApplied": bill["amount_applied"],
             })
 
@@ -314,7 +316,7 @@ def register(mcp: FastMCP) -> None:
             "Supplier": {"UID": supplier_id},
             "Date": payment_date,
             "AmountPaid": amount,
-            "PayFrom": payment_method,
+            "PayFrom": pay_from,
             "Account": {"UID": bank_account_id},
             "Lines": bill_lines,
         }
