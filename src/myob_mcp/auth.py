@@ -61,7 +61,12 @@ class MyobAuth:
             "redirect_uri": self._config.redirect_uri,
             "response_type": "code",
             "scope": scopes,
-            "prompt": "consent",
+            # NOTE: do NOT send prompt=consent. For AccountRight (GUID-based)
+            # company files, MYOB rejects the authorize request with
+            # "something went wrong and we couldn't connect the app".
+            # prompt=consent / businessId is a MYOB Business (Essentials)
+            # concept; AccountRight uses the company file GUID, which we get
+            # from the /accountright/ registry or default_company_file_id.
             "state": self._oauth_state,
         }
         return f"{AUTH_URL}?{urlencode(params)}"
