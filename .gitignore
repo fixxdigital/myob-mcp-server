@@ -22,5 +22,6 @@ env/
 
 nul
 .claude/
+skills-lock.json
 uv.lock
 REVIEW*.md
